@@ -84,7 +84,7 @@
 <script>
 (function(){
   // --- LOCK LOGIC ---
-  const PASS_HASH = "a03030faf53a5d5f549665df07c54b41cc1872b775ec482a00f395a6ee47646d"; // hash of Pinky1235
+  const PASS_HASH = "a03030faf53a5d5f549665df07c54b41cc1872b775ec482a00f395a6ee47646d"; // hash of Password 
   let failCount = 0;
   async function sha256(t){const b=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');}
   async function tryUnlock(){
