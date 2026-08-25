@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow — Board</title>
+<style>
+  :root{
+    --bg:#0f1115;--panel:#171a21;--panel-2:#1e222b;--border:#2a2f3a;--text:#e7e9ee;--muted:#8b91a1;--accent:#5b8cff;--accent-2:#7ee0c3;--danger:#ff6b6b;--warn:#ffb454;--radius:10px;
+  }
+  *{box-sizing:border-box;} body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  /* LOCK SCREEN */
+  #lockScreen{position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:20px;}
+  .lock-card{background:var(--panel);border:1px solid var(--border);padding:28px;border-radius:14px;width:340px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.3);}
+  .lock-card h2{margin:0 0 6px;font-size:20px;} .lock-card p{color:var(--muted);font-size:13px;margin:0 0 16px;}
+  #passInput{width:100%;padding:11px;border-radius:8px;border:1px solid var(--border);background:var(--panel-2);color:var(--text);outline:none;font-size:14px;}
+  #passInput:focus{border-color:var(--accent);}
+  /* rest of your styles */
+  header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;position:sticky;top:0;background:rgba(15,17,21,0.95);backdrop-filter:blur(6px);z-index:10;}
+  header h1{font-size:18px;margin:0;display:flex;align-items:center;gap:8px;} header h1 span.dot{width:10px;height:10px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:inline-block;}
+  .stats{display:flex;gap:16px;font-size:13px;color:var(--muted);} .stats b{color:var(--text);}
+  .toolbar{padding:14px 20px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--border);}
+  input[type="text"], select, textarea{background:var(--panel-2);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:8px;font-size:13px;outline:none;}
+  input[type="text"]:focus, select:focus, textarea:focus{border-color:var(--accent);} #newTaskInput{flex:1;min-width:180px;}
+  button{background:var(--accent);color:#fff;border:none;padding:8px 14px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;transition:opacity .15s ease, transform .1s ease;}
+  button:hover{opacity:.88;} button:active{transform:scale(0.97);} button.ghost{background:transparent;border:1px solid var(--border);color:var(--muted);} button.ghost.active{border-color:var(--accent);color:var(--accent);} button.small{padding:4px 8px;font-size:12px;}
+  .board{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;padding:20px;} @media (max-width:800px){.board{grid-template-columns:1fr;}}
+  .column{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);min-height:200px;display:flex;flex-direction:column;}
+  .column-header{padding:12px 14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);font-size:13px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--muted);}
+  .column-header .count{background:var(--panel-2);padding:2px 8px;border-radius:20px;font-size:11px;}
+  .column[data-status="todo"] .column-header{color:#9db4ff;} .column[data-status="doing"] .column-header{color:var(--warn);} .column[data-status="done"] .column-header{color:var(--accent-2);}
+  .drop-zone{flex:1;padding:10px;display:flex;flex-direction:column;gap:8px;min-height:120px;transition:background .12s ease;} .drop-zone.drag-over{background:rgba(91,140,255,0.08);outline:2px dashed var(--accent);outline-offset:-6px;}
+  .card{background:var(--panel-2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;cursor:grab;font-size:13px;line-height:1.4;position:relative;animation:pop .15s ease;}
+  @keyframes pop{from{transform:scale(0.96);opacity:0;}to{transform:scale(1);opacity:1;}} .card.dragging{opacity:0.4;}
+  .card .card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;} .card .title{word-break:break-word;flex:1;} .card.done .title{text-decoration:line-through;color:var(--muted);}
+  .card .meta{display:flex;justify-content:space-between;align-items:center;margin-top:8px;gap:6px;flex-wrap:wrap;}
+  .priority{font-size:10px;padding:2px 7px;border-radius:20px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;} .priority.low{background:rgba(126,224,195,.15);color:var(--accent-2);} .priority.medium{background:rgba(255,180,84,.15);color:var(--warn);} .priority.high{background:rgba(255,107,107,.15);color:var(--danger);}
+  .card-actions{display:flex;gap:4px;} .icon-btn{background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:2px 5px;border-radius:5px;} .icon-btn:hover{background:var(--border);color:var(--text);} .timestamp{font-size:10px;color:var(--muted);}
+  .empty-hint{color:var(--muted);font-size:12px;text-align:center;padding:20px 10px;border:1px dashed var(--border);border-radius:8px;}
+  footer{padding:16px 20px 30px;text-align:center;color:var(--muted);font-size:12px;} .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--panel-2);border:1px solid var(--border);padding:10px 18px;border-radius:8px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s ease, transform .2s ease;z-index:100;} .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<div id="lockScreen">
+  <div class="lock-card">
+    <h2><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:linear-gradient(135deg,#5b8cff,#7ee0c3);margin-right:6px;"></span> TaskFlow Locked</h2>
+    <p>Your moods are safe 👁️</p>
+    <input type="password" id="passInput" placeholder="Enter password">
+    <button id="unlockBtn" style="width:100%;margin-top:10px;padding:10px;">Unlock</button>
+    <p id="passError" style="color:#ff6b6b;display:none;margin-top:10px;">Wrong password. Try again.</p>
+  </div>
+</div>
+
+<header>
+  <h1><span class="dot"></span> TaskFlow</h1>
+  <div class="stats" id="statsBar">
+    <span>Total: <b id="statTotal">0</b></span>
+    <span>Active: <b id="statActive">0</b></span>
+    <span>Done: <b id="statDone">0</b></span>
+    <span>Completion: <b id="statPct">0%</b></span>
+  </div>
+</header>
+
+<div class="toolbar">
+  <input type="text" id="newTaskInput" placeholder="Add a task and press Enter..." maxlength="140">
+  <select id="prioritySelect"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select>
+  <button id="addBtn">Add Task</button>
+  <button class="ghost" id="filterAll" data-filter="all">All</button>
+  <button class="ghost" id="filterHigh" data-filter="high">High Priority</button>
+  <button class="ghost" id="clearDoneBtn">Clear Done</button>
+  <button class="ghost" id="lockBtn">🔒 Lock</button>
+</div>
+
+<main class="board" id="board">
+  <div class="column" data-status="todo"><div class="column-header"><span>To Do</span><span class="count" id="count-todo">0</span></div><div class="drop-zone" data-status="todo" id="zone-todo"></div></div>
+  <div class="column" data-status="doing"><div class="column-header"><span>In Progress</span><span class="count" id="count-doing">0</span></div><div class="drop-zone" data-status="doing" id="zone-doing"></div></div>
+  <div class="column" data-status="done"><div class="column-header"><span>Done</span><span class="count" id="count-done">0</span></div><div class="drop-zone" data-status="done" id="zone-done"></div></div>
+</main>
+
+<footer>Data is saved locally in your browser (localStorage). Drag cards between columns to update status.</footer>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  // --- LOCK LOGIC ---
+  const PASS_HASH = "a03030faf53a5d5f549665df07c54b41cc1872b775ec482a00f395a6ee47646d"; // hash of Pinky1235
+  let failCount = 0;
+  async function sha256(t){const b=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');}
+  async function tryUnlock(){
+    const input=document.getElementById('passInput').value;
+    const err=document.getElementById('passError');
+    if(!input){err.textContent="Enter password";err.style.display='block';return;}
+    const h=await sha256(input);
+    if(h===PASS_HASH){
+      sessionStorage.setItem('taskflow_unlocked','1');
+      document.getElementById('lockScreen').style.display='none';
+      failCount=0;
+    }else{
+      failCount++; err.textContent=failCount>=3?"Too many tries, wait 10s":"Wrong password"; err.style.display='block';
+      if(failCount>=3){document.getElementById('unlockBtn').disabled=true; setTimeout(()=>{document.getElementById('unlockBtn').disabled=false; failCount=0; err.style.display='none';},10000);}
+    }
+  }
+  if(sessionStorage.getItem('taskflow_unlocked')==='1'){document.getElementById('lockScreen').style.display='none';}
+  document.getElementById('unlockBtn').addEventListener('click',tryUnlock);
+  document.getElementById('passInput').addEventListener('keydown',e=>{if(e.key==='Enter')tryUnlock();});
+  document.getElementById('lockBtn').addEventListener('click',()=>{sessionStorage.removeItem('taskflow_unlocked'); location.reload();});
+
+  // --- YOUR ORIGINAL TASKFLOW CODE ---
+  const STORAGE_KEY="taskflow.tasks.v1";const STATUSES=["todo","doing","done"];let tasks=[];let currentFilter="all";let dragState={id:null};
+  function loadTasks(){try{const raw=localStorage.getItem(STORAGE_KEY);if(!raw)return seedTasks();const parsed=JSON.parse(raw);if(!Array.isArray(parsed))return seedTasks();return parsed;}catch(e){return seedTasks();}}
+  function saveTasks(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(tasks));}catch(e){showToast("Could not save");}}
+  function seedTasks(){const now=Date.now();return [{id:uid(),title:"Explore the SPCK editor interface",priority:"medium",status:"todo",createdAt:now-500000},{id:uid(),title:"Try dragging this card to In Progress",priority:"low",status:"todo",createdAt:now-400000},{id:uid(),title:"Edit this HTML file and watch it reload",priority:"high",status:"doing",createdAt:now-300000},{id:uid(),title:"Ship something great",priority:"high",status:"done",createdAt:now-200000}];}
+  function uid(){return "t_"+Math.random().toString(36).slice(2,10)+Date.now().toString(36);}
+  function render(){STATUSES.forEach(status=>{const zone=document.getElementById("zone-"+status);zone.innerHTML="";const filtered=tasks.filter(t=>t.status===status).filter(t=>currentFilter==="all"?true:t.priority===currentFilter).sort((a,b)=>b.createdAt-a.createdAt);if(filtered.length===0){const hint=document.createElement("div");hint.className="empty-hint";hint.textContent=status==="done"?"Nothing completed yet":"Drop tasks here";zone.appendChild(hint);}filtered.forEach(task=>zone.appendChild(buildCard(task)));document.getElementById("count-"+status).textContent=tasks.filter(t=>t.status===status).length;});updateStats();}
+  function buildCard(task){const card=document.createElement("div");card.className="card"+(task.status==="done"?" done":"");card.draggable=true;card.dataset.id=task.id;const top=document.createElement("div");top.className="card-top";const title=document.createElement("div");title.className="title";title.textContent=task.title;const actions=document.createElement("div");actions.className="card-actions";const editBtn=document.createElement("button");editBtn.className="icon-btn";editBtn.title="Edit";editBtn.textContent="✎";editBtn.addEventListener("click",()=>editTask(task.id));const delBtn=document.createElement("button");delBtn.className="icon-btn";delBtn.title="Delete";delBtn.textContent="✕";delBtn.addEventListener("click",()=>deleteTask(task.id));actions.append(editBtn,delBtn);top.append(title,actions);const meta=document.createElement("div");meta.className="meta";const priority=document.createElement("span");priority.className="priority "+task.priority;priority.textContent=task.priority;const time=document.createElement("span");time.className="timestamp";time.textContent=relativeTime(task.createdAt);meta.append(priority,time);card.append(top,meta);card.addEventListener("dragstart",onDragStart);card.addEventListener("dragend",onDragEnd);return card;}
+  function relativeTime(ts){const diff=Math.max(0,Date.now()-ts);const mins=Math.floor(diff/60000);if(mins<1)return"just now";if(mins<60)return mins+"m ago";const hrs=Math.floor(mins/60);if(hrs<24)return hrs+"h ago";const days=Math.floor(hrs/24);return days+"d ago";}
+  function updateStats(){const total=tasks.length;const done=tasks.filter(t=>t.status==="done").length;const active=total-done;const pct=total===0?0:Math.round((done/total)*100);document.getElementById("statTotal").textContent=total;document.getElementById("statActive").textContent=active;document.getElementById("statDone").textContent=done;document.getElementById("statPct").textContent=pct+"%";}
+  function addTask(title,priority){const trimmed=title.trim();if(!trimmed){showToast("Task title can't be empty");return;}tasks.push({id:uid(),title:trimmed,priority:priority||"medium",status:"todo",createdAt:Date.now()});saveTasks();render();showToast("Task added");}
+  function deleteTask(id){tasks=tasks.filter(t=>t.id!==id);saveTasks();render();}
+  function editTask(id){const task=tasks.find(t=>t.id===id);if(!task)return;const next=window.prompt("Edit task title:",task.title);if(next===null)return;const trimmed=next.trim();if(!trimmed){showToast("Title can't be empty");return;}task.title=trimmed;saveTasks();render();}
+  function moveTask(id,newStatus){const task=tasks.find(t=>t.id===id);if(!task||task.status===newStatus)return;task.status=newStatus;saveTasks();render();}
+  function clearDone(){const before=tasks.length;tasks=tasks.filter(t=>t.status!=="done");if(tasks.length!==before){saveTasks();render();showToast("Cleared completed tasks");}}
+  function onDragStart(e){dragState.id=e.currentTarget.dataset.id;e.currentTarget.classList.add("dragging");e.dataTransfer.effectAllowed="move";try{e.dataTransfer.setData("text/plain",dragState.id);}catch(err){}}
+  function onDragEnd(e){e.currentTarget.classList.remove("dragging");dragState.id=null;}
+  function setupDropZones(){document.querySelectorAll(".drop-zone").forEach(zone=>{zone.addEventListener("dragover",e=>{e.preventDefault();e.dataTransfer.dropEffect="move";zone.classList.add("drag-over");});zone.addEventListener("dragleave",()=>{zone.classList.remove("drag-over");});zone.addEventListener("drop",e=>{e.preventDefault();zone.classList.remove("drag-over");const id=dragState.id||e.dataTransfer.getData("text/plain");if(id)moveTask(id,zone.dataset.status);});});}
+  let toastTimer=null;function showToast(msg){const toast=document.getElementById("toast");toast.textContent=msg;toast.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove("show"),1800);}
+  function setFilter(filter){currentFilter=filter;document.querySelectorAll(".toolbar .ghost[data-filter]").forEach(btn=>{btn.classList.toggle("active",btn.dataset.filter===filter);});render();}
+  function init(){tasks=loadTasks();setupDropZones();document.getElementById("addBtn").addEventListener("click",()=>{const input=document.getElementById("newTaskInput");const priority=document.getElementById("prioritySelect").value;addTask(input.value,priority);input.value="";input.focus();});document.getElementById("newTaskInput").addEventListener("keydown",e=>{if(e.key==="Enter"){document.getElementById("addBtn").click();}});document.getElementById("clearDoneBtn").addEventListener("click",clearDone);document.querySelectorAll(".toolbar .ghost[data-filter]").forEach(btn=>{btn.addEventListener("click",()=>setFilter(btn.dataset.filter));});setFilter("all");setInterval(render,60000);render();}
+  document.addEventListener("DOMContentLoaded",init);
+})();
+</script>
+</body>
+                                                                                                                                                                                                        </html>
